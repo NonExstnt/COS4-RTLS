@@ -9,8 +9,8 @@ def split_workshop_files():
     Output format: w<workshop_number>_g<group_number>.csv
     """
     # Define paths
-    raw_data_folder = Path("../data/raw")
-    split_data_folder = Path("../data/split")
+    raw_data_folder = Path("data/raw")
+    split_data_folder = Path("data/split")
     
     # Get all workshop CSV files (excluding combined folder)
     workshop_files = [f for f in raw_data_folder.glob("*.csv")]

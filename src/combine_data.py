@@ -1,10 +1,13 @@
 import os
 import pandas as pd
 import glob
+from pathlib import Path
 
 # Load all CSV files from the data folder
-data_folder = "../data/"
-csv_files = glob.glob(os.path.join(data_folder, "*.csv"))
+data_folder = Path("data/raw")
+output_file = Path("data/combined/all_combined.csv")
+
+csv_files = [f for f in data_folder.glob("*.csv")]
 
 # Load and combine all data
 all_data = []
@@ -30,6 +33,5 @@ print(f"\nFirst 5 rows:")
 combined_df.head()
 
 # Save the combined dataframe to a new CSV file
-output_file = "../data/combined/all_combined.csv"
 combined_df.to_csv(output_file, index=False)
 print(f"\nCombined data saved to {output_file}")
