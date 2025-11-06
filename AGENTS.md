@@ -43,3 +43,35 @@ from sklearn.cluster import KMeans
 - Check file existence before processing
 - Validate expected columns in dataframes
 - Print clear error messages with context
+
+# Tasks, Context, and expected Output of the project
+1. Create a spaghetti chart 4.0
+2. Define boundaries of the stations: k-means clustering
+3. Cell Dwell Time - Time within a boundary (The data is somewhat inconsistent, but assume a worker won't back track, so if it seems like they've left a station and then returned, they didn't leave the station it was just sensor drift)
+
+These two are grouped:
+4. Cell Transition Time - How long did it take to move from one station to the next
+5. Total Production Time - How long did it take to go from the start of the "Production" to the end
+
+These two are grouped:
+6. Transition Prediction - Can we predict when will they reach the next station
+7. Production Time Prediction - Can we predict how long the "Production" will take
+
+Problem Context:
+-
+- I have 3 workshop files with data "Workshop1.csv", "Workshop2.csv", "Workshop3.csv"
+- These workshop files have Columns in this order: "name", "x", "y", "z", "time"
+- Ignore the z axis in the data
+- Each Workshop file is different Demonstrations on different days so ensure to use the same x and y sizes for the visuals but don't combine the data
+- Under the "name" category is groups such as "Group 1" or "group 4" etc.. these groups go to all the same stations, but starting at different locations
+- The tags should have reported data every second
+- When doing prediction stick to a simple RandomForest Regression
+
+
+The Output I want:
+-
+- Self-Explaining SIMPLE Python files using Python 3.11.x
+- I want the code to be as simple as possible
+- I want simple visuals to show progress
+- For the comparison between groups of the same workshop, create stacked bar charts for comparison of dwell-time and transition-time
+
