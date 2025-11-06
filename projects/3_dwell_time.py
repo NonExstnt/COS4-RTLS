@@ -10,7 +10,7 @@ import json
 import os
 
 # Configuration
-DATA_FOLDER = "../data/raw"
+DATA_FOLDER = "../data/processed"
 WORKSHOP_FILES = ["Workshop1.csv", "Workshop2.csv", "Workshop3.csv"]
 STATION_FILE = "../output/station_boundaries/station_boundaries.json"
 OUTPUT_FOLDER = "../output/dwell_time"
@@ -68,8 +68,8 @@ def calculate_dwell_times(df, stations):
             station = row["station"]
             timestamp = row["time"]
 
-            # Skip None stations (in transit / sensor drift)
-            if station is None:
+            # Skip None/NaN stations (in transit / sensor drift)
+            if station is None or pd.isna(station):
                 continue
 
             # Apply anti-backtracking: don't go back to earlier stations

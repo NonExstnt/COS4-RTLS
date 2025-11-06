@@ -41,6 +41,14 @@ projects/
 
 ## How to Run
 
+### Step 0: Preprocess data (first time only)
+```bash
+cd ../src
+uv run preprocess_data.py
+```
+
+This creates cleaned CSV files in `data/processed/` with the `z` column removed.
+
 ### Option 1: Run all analyses at once (recommended)
 ```bash
 uv run run_all.py
@@ -95,12 +103,13 @@ Prediction models use scikit-learn's RandomForestRegressor with basic parameters
 
 ## Data Format
 
-Input CSV files should have columns in this order:
+Input CSV files should have columns:
 - `name`: Group identifier (e.g., "Group 1")
 - `x`: X coordinate
 - `y`: Y coordinate  
-- `z`: Z coordinate (ignored)
 - `time`: Timestamp
+
+**Note**: Raw data files in `data/raw/` include a `z` column which is removed during preprocessing. All analysis scripts use the processed data from `data/processed/`.
 
 ## Workshop Files
 

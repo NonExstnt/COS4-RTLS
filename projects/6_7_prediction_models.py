@@ -14,7 +14,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 # Configuration
-DATA_FOLDER = "../data/raw"
+DATA_FOLDER = "../data/processed"
 WORKSHOP_FILES = ["Workshop1.csv", "Workshop2.csv", "Workshop3.csv"]
 STATION_FILE = "../output/station_boundaries/station_boundaries.json"
 OUTPUT_FOLDER = "../output/prediction_models"
@@ -65,6 +65,7 @@ def extract_features_for_prediction(df, stations):
         # Track station visits
         current_station = None
         entry_time = None
+        last_timestamp = None
         dwell_time = None
         station_sequence = []
         max_station_reached = 0
@@ -73,8 +74,8 @@ def extract_features_for_prediction(df, stations):
             station = row["station"]
             timestamp = row["time"]
 
-            # Skip None stations (in transit)
-            if station is None:
+            # Skip None/NaN stations (in transit)
+            if station is None or pd.isna(station):
                 continue
 
             # Anti-backtracking
@@ -83,7 +84,7 @@ def extract_features_for_prediction(df, stations):
 
             if station != current_station:
                 if current_station is not None:
-                    exit_time = timestamp
+                    exit_time = last_timestamp
                     dwell = (exit_time - entry_time).total_seconds()
 
                     station_sequence.append(
@@ -98,6 +99,9 @@ def extract_features_for_prediction(df, stations):
                 current_station = station
                 entry_time = timestamp
                 max_station_reached = max(max_station_reached, station)
+
+            # Always update last seen timestamp for current station
+            last_timestamp = timestamp
 
         # Close last station
         if current_station is not None and entry_time is not None:

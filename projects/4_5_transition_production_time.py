@@ -11,7 +11,7 @@ import json
 import os
 
 # Configuration
-DATA_FOLDER = "../data/raw"
+DATA_FOLDER = "../data/processed"
 WORKSHOP_FILES = ["Workshop1.csv", "Workshop2.csv", "Workshop3.csv"]
 STATION_FILE = "../output/station_boundaries/station_boundaries.json"
 OUTPUT_FOLDER = "../output/transition_production_time"
@@ -62,6 +62,7 @@ def analyze_transitions_and_production(df, stations):
         # Track station entries with anti-backtracking
         current_station = None
         entry_time = None
+        last_timestamp = None
         station_sequence = []
         max_station_reached = 0
 
@@ -69,8 +70,8 @@ def analyze_transitions_and_production(df, stations):
             station = row["station"]
             timestamp = row["time"]
 
-            # Skip None stations (in transit)
-            if station is None:
+            # Skip None/NaN stations (in transit)
+            if station is None or pd.isna(station):
                 continue
 
             # Anti-backtracking logic - ignore backward movements
@@ -80,12 +81,12 @@ def analyze_transitions_and_production(df, stations):
             # Detect station change
             if station != current_station:
                 if current_station is not None:
-                    # Record station exit
+                    # Record station exit (use last timestamp before change)
                     station_sequence.append(
                         {
                             "station": current_station,
                             "entry_time": entry_time,
-                            "exit_time": timestamp,
+                            "exit_time": last_timestamp,
                         }
                     )
 
@@ -93,6 +94,9 @@ def analyze_transitions_and_production(df, stations):
                 current_station = station
                 entry_time = timestamp
                 max_station_reached = max(max_station_reached, station)
+
+            # Always update last seen timestamp for current station
+            last_timestamp = timestamp
 
         # Close last station
         if current_station is not None and entry_time is not None:
@@ -266,14 +270,17 @@ for workshop_file in WORKSHOP_FILES:
 
     # Display transition summary
     print("\nTransition Times (minutes):")
-    for group in sorted(transition_df["group"].unique()):
-        group_data = transition_df[transition_df["group"] == group]
-        print(f"\n  {group}:")
-        for _, row in group_data.iterrows():
-            print(
-                f"    Station {row['from_station']} → {row['to_station']}: "
-                f"{row['transition_time_minutes']:.2f} min"
-            )
+    if not transition_df.empty:
+        for group in sorted(transition_df["group"].unique()):
+            group_data = transition_df[transition_df["group"] == group]
+            print(f"\n  {group}:")
+            for _, row in group_data.iterrows():
+                print(
+                    f"    Station {row['from_station']} → {row['to_station']}: "
+                    f"{row['transition_time_minutes']:.2f} min"
+                )
+    else:
+        print("  No transitions detected (groups stayed at single stations)")
 
     # Display production summary
     print("\nTotal Production Times:")

@@ -11,7 +11,7 @@ import os
 import json
 
 # Configuration
-DATA_FOLDER = "../data/raw"
+DATA_FOLDER = "../data/processed"
 WORKSHOP_FILES = ["Workshop1.csv", "Workshop2.csv", "Workshop3.csv"]
 OUTPUT_FOLDER = "../output/station_boundaries"
 N_STATIONS = 6  # Expected number of stations
