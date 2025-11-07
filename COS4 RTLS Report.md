@@ -665,7 +665,7 @@ W1 G1,2,380.2,6.34
 ## References
 
 ### Technical Documentation
-1. README.md - Main project documentation
+1. <span>README.md</span> - Main project documentation
 2. projects/README.md - Group comparison approach documentation
 3. project-individual/README.md - Individual analysis approach documentation
 
