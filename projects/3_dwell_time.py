@@ -78,7 +78,7 @@ def calculate_group_dwell_times(df, stations, group_name):
     return results
 
 
-def create_dwell_comparison_chart(dwell_df, workshop_id):
+def create_dwell_comparison_chart(dwell_df, title):
     """Create stacked bar chart comparing dwell times across groups"""
     # Pivot data for stacked bar chart
     pivot_data = dwell_df.pivot(
@@ -95,16 +95,53 @@ def create_dwell_comparison_chart(dwell_df, workshop_id):
 
     ax.set_xlabel("Group", fontsize=12, fontweight="bold")
     ax.set_ylabel("Dwell Time (minutes)", fontsize=12, fontweight="bold")
-    ax.set_title(
-        f"Workshop {workshop_id} - Station Dwell Time Comparison",
-        fontsize=14,
-        fontweight="bold",
-    )
+    ax.set_title(title, fontsize=14, fontweight="bold")
     ax.legend(title="Station", bbox_to_anchor=(1.05, 1), loc="upper left")
     ax.grid(axis="y", alpha=0.3)
     plt.xticks(rotation=45, ha="right")
     plt.tight_layout()
 
+    return fig
+
+
+def create_individual_group_chart(group_data, group_name, workshop_id):
+    """Create bar chart for a single group's dwell times"""
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    # Filter out zero values
+    plot_data = group_data[group_data["dwell_time_minutes"] > 0]
+
+    if len(plot_data) == 0:
+        plt.close(fig)
+        return None
+
+    stations = plot_data["station"].values
+    dwell_times = plot_data["dwell_time_minutes"].values
+
+    bars = ax.bar(stations, dwell_times, width=0.6, edgecolor="black", linewidth=1.5)
+
+    # Color bars
+    cmap = plt.get_cmap("tab10")
+    for i, bar in enumerate(bars):
+        bar.set_color(cmap(int(stations[i]) - 1))
+
+    ax.set_xlabel("Station", fontsize=12, fontweight="bold")
+    ax.set_ylabel("Dwell Time (minutes)", fontsize=12, fontweight="bold")
+    ax.set_title(
+        f"Workshop {workshop_id} - {group_name} - Station Dwell Times",
+        fontsize=14,
+        fontweight="bold",
+    )
+    ax.set_xticks(stations)
+    ax.grid(axis="y", alpha=0.3)
+
+    # Add value labels on top of bars
+    for i, (station, time) in enumerate(zip(stations, dwell_times)):
+        ax.text(
+            station, time, f"{time:.1f}", ha="center", va="bottom", fontweight="bold"
+        )
+
+    plt.tight_layout()
     return fig
 
 
@@ -143,7 +180,7 @@ for wid in WORKSHOP_IDS:
     # Create results dataframe
     dwell_df = pd.DataFrame(all_results)
 
-    # Save results
+    # Save combined results
     csv_path = os.path.join(OUTPUT_FOLDER, f"workshop{wid}_dwell_times.csv")
     dwell_df.to_csv(csv_path, index=False)
     print(f"  ✓ Saved dwell times to: {csv_path}")
@@ -160,12 +197,36 @@ for wid in WORKSHOP_IDS:
                     f"      Station {row['station']}: {row['dwell_time_minutes']:.2f} min"
                 )
 
-    # Create visualization
-    fig = create_dwell_comparison_chart(dwell_df, wid)
+    # Create combined comparison visualization
+    fig = create_dwell_comparison_chart(
+        dwell_df, f"Workshop {wid} - Station Dwell Time Comparison (All Groups)"
+    )
     plot_path = os.path.join(OUTPUT_FOLDER, f"workshop{wid}_dwell_comparison.png")
     fig.savefig(plot_path, dpi=150, bbox_inches="tight")
     print(f"  ✓ Saved comparison chart: {plot_path}")
     plt.close(fig)
+
+    # Create individual group visualizations
+    print(f"\n  Creating individual group charts...")
+    for group in sorted(dwell_df["group"].unique()):
+        group_data = dwell_df[dwell_df["group"] == group]
+        group_name_clean = group.replace(" ", "_").lower()
+
+        # Save individual CSV
+        individual_csv_path = os.path.join(
+            OUTPUT_FOLDER, f"{group_name_clean}_dwell_times.csv"
+        )
+        group_data.to_csv(individual_csv_path, index=False)
+
+        # Create individual chart
+        fig = create_individual_group_chart(group_data, group, wid)
+        if fig:
+            individual_plot_path = os.path.join(
+                OUTPUT_FOLDER, f"{group_name_clean}_dwell_chart.png"
+            )
+            fig.savefig(individual_plot_path, dpi=150, bbox_inches="tight")
+            print(f"    ✓ Saved {group}: {individual_plot_path}")
+            plt.close(fig)
 
 print("\n" + "=" * 60)
 print("COMPLETE! Dwell time analysis finished.")

@@ -62,7 +62,7 @@ def detect_stations(df, n_stations=N_STATIONS):
     return station_info
 
 
-def visualize_stations(df, station_info, workshop_id):
+def visualize_stations(df, station_info, title, xlim=None, ylim=None):
     """Visualize detected stations with boundaries"""
     fig, ax = plt.subplots(figsize=(14, 8))
     ax.scatter(df["x"], df["y"], alpha=0.1, s=1, color="gray", label="All positions")
@@ -100,13 +100,15 @@ def visualize_stations(df, station_info, workshop_id):
         )
     ax.set_xlabel("X Position (m)", fontsize=12)
     ax.set_ylabel("Y Position (m)", fontsize=12)
-    ax.set_title(
-        f"Workshop {workshop_id} - Detected Stations (K-means)",
-        fontsize=14,
-        fontweight="bold",
-    )
+    ax.set_title(title, fontsize=14, fontweight="bold")
     ax.grid(True, alpha=0.3)
-    ax.axis("equal")
+
+    # Set consistent axis limits if provided
+    if xlim is not None:
+        ax.set_xlim(xlim)
+    if ylim is not None:
+        ax.set_ylim(ylim)
+
     plt.tight_layout()
     return fig
 
@@ -116,11 +118,41 @@ print("=" * 60)
 print("STATION BOUNDARY DETECTION (K-MEANS, Split Files)")
 print("=" * 60)
 
+# Calculate global axis limits from ALL data
+print("\nCalculating global axis limits from all workshops...")
+all_dfs = []
+for wid in WORKSHOP_IDS:
+    pattern = os.path.join(SPLIT_FOLDER, f"w{wid}_g*.csv")
+    group_files = sorted(glob(pattern))
+    for f in group_files:
+        df = pd.read_csv(f)
+        all_dfs.append(df)
+
+combined_data = pd.concat(all_dfs, ignore_index=True)
+x_min, x_max = combined_data["x"].min(), combined_data["x"].max()
+y_min, y_max = combined_data["y"].min(), combined_data["y"].max()
+
+# Add small padding
+x_padding = (x_max - x_min) * 0.02
+y_padding = (y_max - y_min) * 0.02
+xlim = (x_min - x_padding, x_max + x_padding)
+ylim = (y_min - y_padding, y_max + y_padding)
+
+print(f"Using consistent axis limits:")
+print(f"  X: {xlim[0]:.2f} to {xlim[1]:.2f}")
+print(f"  Y: {ylim[0]:.2f} to {ylim[1]:.2f}")
+
 all_station_info = {}
 for wid in WORKSHOP_IDS:
-    print(f"\nProcessing Workshop {wid}...")
+    print(f"\n{'=' * 60}")
+    print(f"Processing Workshop {wid}...")
+    print("=" * 60)
+
+    # Load combined workshop data
     df = load_split_group_files(wid)
     print(f"  Loaded {len(df)} records")
+
+    # Detect stations for combined workshop
     station_info = detect_stations(df, n_stations=N_STATIONS)
     all_station_info[f"workshop{wid}"] = station_info
     print(f"  Detected {len(station_info)} stations:")
@@ -128,11 +160,42 @@ for wid in WORKSHOP_IDS:
         print(
             f"    Station {station['station_id']}: ({station['center_x']:.2f}, {station['center_y']:.2f}) radius={station['radius']:.2f}m [{station['num_points']} points]"
         )
-    fig = visualize_stations(df, station_info, wid)
+
+    # Save combined workshop visualization
+    fig = visualize_stations(
+        df,
+        station_info,
+        f"Workshop {wid} - Detected Stations (K-means, Combined)",
+        xlim,
+        ylim,
+    )
     output_path = os.path.join(OUTPUT_FOLDER, f"workshop{wid}_stations.png")
     fig.savefig(output_path, dpi=150, bbox_inches="tight")
-    print(f"  ✓ Saved visualization: {output_path}")
+    print(f"  ✓ Saved combined visualization: {output_path}")
     plt.close(fig)
+
+    # Process individual groups
+    print(f"\n  Processing individual groups...")
+    pattern = os.path.join(SPLIT_FOLDER, f"w{wid}_g*.csv")
+    group_files = sorted(glob(pattern))
+
+    for group_file in group_files:
+        group_name = os.path.basename(group_file).replace(".csv", "")
+        group_df = pd.read_csv(group_file)
+        group_df["time"] = pd.to_datetime(group_df["time"])
+
+        # Create visualization for individual group using workshop station boundaries
+        fig = visualize_stations(
+            group_df,
+            station_info,
+            f"Workshop {wid} - {group_name.upper()} - Station Boundaries",
+            xlim,
+            ylim,
+        )
+        group_output_path = os.path.join(OUTPUT_FOLDER, f"{group_name}_stations.png")
+        fig.savefig(group_output_path, dpi=150, bbox_inches="tight")
+        print(f"    ✓ Saved {group_name}: {group_output_path}")
+        plt.close(fig)
 
 # Save station information to JSON
 json_path = os.path.join(OUTPUT_FOLDER, "station_boundaries.json")
