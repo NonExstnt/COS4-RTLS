@@ -5,34 +5,35 @@ This folder contains analysis scripts that process each group individually, rath
 ## Scripts
 
 ### 2_station_boundaries.py
-Detects station boundaries for each individual group using K-means clustering. The number of stations is automatically determined using **elbow method and silhouette analysis** on workshop-level data, then applied to each group individually.
+Detects station boundaries for each individual group using K-means clustering. The number of stations is automatically determined using **silhouette analysis** on workshop-level data, then applied to each group individually.
 
 **Method:**
-- Tests k-means clustering for k=3 to k=10
+- Combines all groups from a workshop to determine optimal k
+- Tests k-means clustering for k=3 to k=9
 - Calculates inertia and silhouette score for each k value
 - Selects optimal k based on highest silhouette score
-- All groups within a workshop use the same number of stations
-- Each group gets its own specific station centers and radii
+- All groups within a workshop use the same number of stations (optimal k)
+- Each group gets its own specific station centers and radii based on their individual movement data
 
 **Output:**
-- `{group_name}_stations.png` - Visualization of detected stations for each group
-- `station_boundaries_individual.json` - Station definitions for all groups
+- `boundaries/{group_name}_stations.png` - Visualization of detected stations for each group
+- `boundaries/station_boundaries_individual.json` - Station definitions for all groups
 
 ### 3_dwell_time.py
 Calculates the time each group spent at each station using the group's individual station boundaries.
 
 **Output:**
-- `{group_name}_dwell_times.csv` - Dwell time data for each group
-- `{group_name}_dwell_chart.png` - Bar chart showing dwell times by station
+- `dwell_time/{group_name}_dwell_times.csv` - Dwell time data for each group
+- `dwell_time/{group_name}_dwell_chart.png` - Bar chart showing dwell times by station
 
 ### 4_5_transition_production_time.py
 Analyzes transition times between stations and total production time for each group individually.
 
 **Output:**
-- `{group_name}_transitions.csv` - Transition time data
-- `{group_name}_transition_chart.png` - Visualization of transitions
-- `{group_name}_production.csv` - Production time data
-- `{group_name}_production_summary.png` - Production time summary
+- `transition_production_time/{group_name}_transitions.csv` - Transition time data
+- `transition_production_time/{group_name}_transition_chart.png` - Visualization of transitions
+- `transition_production_time/{group_name}_production.csv` - Production time data
+- `transition_production_time/{group_name}_production_summary.png` - Production time summary
 
 ## Running the Analysis
 
@@ -52,7 +53,10 @@ uv run 4_5_transition_production_time.py
 
 ## Output Location
 
-All outputs (images and CSV files) are saved to `project-individual/output/`
+All outputs (images and CSV files) are saved to `project-individual/output/` in subdirectories:
+- `output/boundaries/` - Station visualizations and JSON
+- `output/dwell_time/` - Dwell time CSVs and charts
+- `output/transition_production_time/` - Transition and production data
 
 ## Key Differences from Main Project
 
@@ -67,12 +71,12 @@ All outputs (images and CSV files) are saved to `project-individual/output/`
 
 For each workshop:
 1. Combine all group data from that workshop
-2. Test k-means clustering for k ∈ [2, 15]
+2. Test k-means clustering for k ∈ [3, 9]
 3. For each k, calculate:
    - **Inertia**: Within-cluster sum of squares (lower is better)
    - **Silhouette Score**: Cluster separation quality [-1, 1] (higher is better)
 4. Select k with highest silhouette score
-5. Apply this k to each group individually to find their specific station centers
+5. Apply this k to each group individually to find their specific station centers and radii
 
 ## Notes
 

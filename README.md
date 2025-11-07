@@ -62,7 +62,8 @@ COS4-RTLS/
 **Purpose:** Deep dive into each group's specific patterns
 
 **Features:**
-- **Auto-detects optimal N_STATIONS** using silhouette analysis (k=2-15)
+- **Auto-detects optimal N_STATIONS** using silhouette analysis (k=3-9)
+- Workshop-level optimal k determination, applied individually per group
 - Individual station boundaries per group
 - Focused charts per group (no comparisons)
 - Self-contained `./output/` folder
@@ -77,13 +78,19 @@ COS4-RTLS/
 
 ### Installation
 ```bash
-# Using uv (automatic dependency management)
-cd projects
-uv run run_all.py
-
-# Or install dependencies manually
+# Install dependencies manually if not using uv
 pip install pandas numpy matplotlib scikit-learn
 ```
+
+### Data Preparation (First Time Setup)
+Before running any analysis, you need to split the raw workshop data by groups:
+
+```bash
+cd src
+python split_data.py
+```
+
+This creates individual group files in `data/split/` (e.g., w1_g1.csv, w1_g2.csv, etc.)
 
 ### Running Analysis
 
@@ -150,45 +157,58 @@ All charts use the same axis limits across workshops for easy comparison.
 
 ### Silhouette Analysis (project-individual)
 Automatically determines optimal number of stations:
-- Tests k=2 to k=15
+- Tests k=3 to k=9 on combined workshop data
 - Calculates inertia and silhouette score for each k
 - Selects k with highest silhouette score
+- Applies optimal k to each group individually with group-specific station centers
 - Ensures data-driven station detection
 
 ## Outputs
 
-### Projects Folder Outputs (in `../output/`)
+### Projects Folder Outputs (in `output/` at root level)
 ```
 output/
-├── spaghetti_charts/
+├── spaghetti/
 │   ├── workshop1_spaghetti.png
-│   └── ...
+│   ├── workshop2_spaghetti.png
+│   └── workshop3_spaghetti.png
 ├── boundaries/
-│   ├── workshop1_stations.png
+│   ├── workshop1_stations.png (combined workshop view)
+│   ├── w1_g1_stations.png (individual group views)
+│   ├── w1_g2_stations.png
 │   ├── station_boundaries.json
-│   └── ...
+│   └── ... (18 group visualizations total)
 ├── dwell_time/
-│   ├── workshop1_dwell_comparison.png
+│   ├── workshop1_dwell_comparison.png (stacked bar chart)
 │   ├── workshop1_dwell_times.csv
-│   └── ...
+│   ├── w1_g1_dwell_times.csv (individual group data)
+│   ├── w1_g1_dwell_chart.png
+│   └── ... (18 group charts + CSVs)
 └── transition_production_time/
-    ├── workshop1_transition_comparison.png
+    ├── workshop1_transition_comparison.png (stacked bar chart)
     ├── workshop1_production_time.png
-    └── ...
+    ├── workshop1_transitions.csv
+    └── workshop1_production.csv
 ```
 
-### Project-Individual Outputs (in `./output/`)
+### Project-Individual Outputs (in `project-individual/output/`)
 ```
-output/
-├── w1_g1_stations.png
-├── w1_g1_dwell_times.csv
-├── w1_g1_dwell_chart.png
-├── w1_g1_transitions.csv
-├── w1_g1_transition_chart.png
-├── w1_g1_production.csv
-├── w1_g1_production_summary.png
-├── ... (for all 18 groups)
-└── station_boundaries_individual.json
+project-individual/output/
+├── boundaries/
+│   ├── w1_g1_stations.png
+│   ├── w1_g2_stations.png
+│   ├── ... (all 18 groups)
+│   └── station_boundaries_individual.json
+├── dwell_time/
+│   ├── w1_g1_dwell_times.csv
+│   ├── w1_g1_dwell_chart.png
+│   └── ... (all 18 groups)
+└── transition_production_time/
+    ├── w1_g1_transitions.csv
+    ├── w1_g1_transition_chart.png
+    ├── w1_g1_production.csv
+    ├── w1_g1_production_summary.png
+    └── ... (all 18 groups)
 ```
 
 ## Workshop Data
@@ -212,7 +232,7 @@ Ensure you're running scripts from the correct directory:
 
 ### No output generated
 - Check that data files exist in `data/split/`
-- Run preprocessing: `cd src && uv run preprocess_data.py && uv run split_data.py`
+- Run data preparation: `cd src && python split_data.py`
 
 ### Different number of stations detected
 This is expected! The silhouette analysis may find different optimal k values for different workshops based on actual movement patterns.

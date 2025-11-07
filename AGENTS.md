@@ -31,7 +31,7 @@ from sklearn.cluster import KMeans
 ### Output & Logging
 - Print progress messages with clear section headers using `=` separators
 - Use checkmarks (✓) for completed tasks
-- Save all outputs to `../output/<category>/` folders
+- Save outputs: `projects/` scripts use `../output/<category>/`, `project-individual/` scripts use `./output/<category>/`
 - Save plots as PNG at 150 DPI: `fig.savefig(path, dpi=150, bbox_inches='tight')`
 
 ### Data Handling

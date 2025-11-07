@@ -39,13 +39,13 @@ projects/
 
 ## How to Run
 
-### Step 0: Preprocess data (first time only)
+### Step 0: Prepare data (first time only)
 ```bash
 cd ../src
-uv run preprocess_data.py
+python split_data.py
 ```
 
-This creates cleaned CSV files in `data/processed/` with the `z` column removed.
+This creates individual group files in `data/split/` from the raw workshop CSV files.
 
 ### Option 1: Run all analyses at once (recommended)
 ```bash
@@ -53,13 +53,13 @@ uv run run_all.py
 ```
 
 ### Option 2: Run scripts individually
-Execute the scripts **in order** (each script builds on previous outputs):
+Execute the scripts as needed (station boundaries must be run before dwell time and transition analyses):
 
 ```bash
-# Step 1: Create spaghetti charts
+# Step 1: Create spaghetti charts (independent)
 uv run 1_spaghetti_chart.py
 
-# Step 2: Detect station boundaries
+# Step 2: Detect station boundaries (required for Steps 3-4)
 uv run 2_station_boundaries.py
 
 # Step 3: Calculate dwell times (requires Step 2)
@@ -71,14 +71,32 @@ uv run 4_5_transition_production_time.py
 
 ## Output Structure
 
-Results are saved to the `output/` folder:
+Results are saved to the `../output/` folder (at the project root level):
 
 ```
 output/
-├── spaghetti_charts/           # Movement path visualizations
-├── station_boundaries/         # K-means station definitions (JSON + plots)
-├── dwell_time/                 # Time spent at each station (CSV + plots)
-├── transition_production_time/ # Transition & total time (CSV + plots)
+├── spaghetti/                      # Movement path visualizations
+│   ├── workshop1_spaghetti.png
+│   ├── workshop2_spaghetti.png
+│   └── workshop3_spaghetti.png
+├── boundaries/                     # K-means station definitions
+│   ├── workshop1_stations.png      # Combined workshop visualization
+│   ├── w1_g1_stations.png          # Individual group visualizations
+│   ├── w1_g2_stations.png          # (18 group charts total)
+│   ├── ...
+│   └── station_boundaries.json     # Station center coordinates & radii
+├── dwell_time/                     # Time spent at each station
+│   ├── workshop1_dwell_comparison.png  # Stacked bar chart comparing groups
+│   ├── workshop1_dwell_times.csv       # Combined workshop data
+│   ├── w1_g1_dwell_times.csv           # Individual group data (18 files)
+│   ├── w1_g1_dwell_chart.png           # Individual group charts (18 files)
+│   └── ...
+└── transition_production_time/     # Transition & total time
+    ├── workshop1_transition_comparison.png  # Stacked bar chart
+    ├── workshop1_production_time.png
+    ├── workshop1_transitions.csv
+    ├── workshop1_production.csv
+    └── ...
 ```
 
 ## Key Features
@@ -100,7 +118,7 @@ Input CSV files should have columns:
 - `y`: Y coordinate  
 - `time`: Timestamp
 
-**Note**: Raw data files in `data/raw/` include a `z` column which is removed during preprocessing. All analysis scripts use the processed data from `data/processed/` or `data/split`.
+**Note**: The analysis uses split group files from `data/split/` (e.g., w1_g1.csv, w1_g2.csv). These files are created by running `python split_data.py` from the `src/` folder.
 
 ## Workshop Files
 
@@ -115,7 +133,7 @@ Each workshop is analyzed independently (no data combination).
 
 - **Missing dependencies**: Run `pip install pandas numpy matplotlib scikit-learn`
 - **File not found errors**: Ensure you run scripts from the `projects/` directory
-- **No output**: Check that workshop CSV files exist in `../data/raw/`
+- **No output**: Check that split files exist in `../data/split/` - run `cd ../src && python split_data.py` if needed
 
 ## Notes
 
