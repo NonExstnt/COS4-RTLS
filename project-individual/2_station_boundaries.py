@@ -2,6 +2,7 @@
 Station Boundary Detection - Individual Groups
 Uses split group files from data/split/
 Generates station boundaries for each individual group
+Number of stations determined from workshop-level k-means clustering
 """
 
 import pandas as pd
@@ -17,7 +18,6 @@ from glob import glob
 SPLIT_FOLDER = "/Users/michaelUni/workspace/GitHub/NonExstnt/COS4-RTLS/data/split"
 OUTPUT_FOLDER = "./output/boundaries"
 WORKSHOP_IDS = ["1", "2", "3"]
-N_STATIONS = 6  # Expected number of stations
 
 # Create output folder
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
@@ -30,7 +30,41 @@ def load_group_file(filepath):
     return df
 
 
-def detect_stations(df, n_stations=N_STATIONS):
+def determine_optimal_clusters(df, max_clusters=10):
+    """
+    Determine optimal number of clusters using elbow method
+    Returns the number of clusters where the rate of decrease in inertia slows
+    """
+    positions = df[["x", "y"]].values
+    inertias = []
+    
+    # Test different numbers of clusters
+    K_range = range(2, min(max_clusters + 1, len(positions)))
+    
+    for k in K_range:
+        kmeans = KMeans(n_clusters=k, random_state=42, n_init="auto")
+        kmeans.fit(positions)
+        inertias.append(kmeans.inertia_)
+    
+    # Find elbow point using rate of change
+    if len(inertias) < 2:
+        return 6  # Default fallback
+    
+    # Calculate second derivative (rate of change of rate of change)
+    diffs = np.diff(inertias)
+    diff_diffs = np.diff(diffs)
+    
+    # Find the point where the decrease rate changes most (elbow)
+    if len(diff_diffs) > 0:
+        elbow_idx = np.argmax(diff_diffs) + 2  # +2 because we started at k=2 and lost 2 points in diff
+        optimal_k = list(K_range)[elbow_idx] if elbow_idx < len(K_range) else 6
+    else:
+        optimal_k = 6
+    
+    return optimal_k
+
+
+def detect_stations(df, n_stations):
     """Use K-means to detect station centers"""
     positions = df[["x", "y"]].values
     kmeans = KMeans(n_clusters=n_stations, random_state=42, n_init="auto")
@@ -144,10 +178,23 @@ for wid in WORKSHOP_IDS:
     print(f"Processing Workshop {wid}...")
     print("=" * 60)
 
+    # Load all groups for this workshop to determine optimal N_STATIONS
     pattern = os.path.join(SPLIT_FOLDER, f"w{wid}_g*.csv")
     group_files = sorted(glob(pattern))
     print(f"  Found {len(group_files)} group files")
+    
+    # Combine all workshop data to find optimal number of stations
+    workshop_dfs = []
+    for f in group_files:
+        df = pd.read_csv(f)
+        workshop_dfs.append(df)
+    workshop_combined = pd.concat(workshop_dfs, ignore_index=True)
+    
+    # Determine optimal number of stations from workshop-level data
+    n_stations = determine_optimal_clusters(workshop_combined)
+    print(f"\n  Determined optimal number of stations for Workshop {wid}: {n_stations}")
 
+    # Now process each group with the determined N_STATIONS
     for group_file in group_files:
         group_name = os.path.basename(group_file).replace(".csv", "")
         print(f"\n  Processing {group_name}...")
@@ -155,8 +202,8 @@ for wid in WORKSHOP_IDS:
         df = load_group_file(group_file)
         print(f"    Loaded {len(df)} records")
 
-        # Detect stations for this group
-        station_info = detect_stations(df, n_stations=N_STATIONS)
+        # Detect stations for this group using workshop's N_STATIONS
+        station_info = detect_stations(df, n_stations)
         all_station_info[group_name] = station_info
         
         print(f"    Detected {len(station_info)} stations:")
@@ -170,7 +217,7 @@ for wid in WORKSHOP_IDS:
         fig = visualize_stations(
             df,
             station_info,
-            f"{group_name.upper()} - Detected Stations (K-means)",
+            f"{group_name.upper()} - Detected Stations (K-means, n={n_stations})",
             xlim,
             ylim,
         )
