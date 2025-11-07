@@ -373,32 +373,26 @@ Total run-times are somewhat consistent for the same workshop which is expected,
 
 The project's dual-approach architecture serves distinct analytical purposes:
 
-**Table 4**: Approach Comparison Matrix
+**Table 1**: Approach Comparison Matrix
 
 | Aspect | Group Comparison (projects/) | Individual Analysis (project-individual/) |
 |--------|----------------------------|------------------------------------------|
-| **Station Detection** | Hardcoded k=6 | Auto-detected k (silhouette-based) |
 | **Boundaries** | Shared per workshop | Individual per group |
 | **Visualisations** | Stacked comparisons | Individual charts |
 | **Use Case** | Workshop-level comparison | Deep group investigation |
-| **Standardization** | High (fixed parameters) | Low (data-driven) |
-| **Flexibility** | Low (assumes 6 stations) | High (adapts to patterns) |
 
 ### 5.2 When to Use Each Approach
 
 **Use Group Comparison When**:
 - Comparing performance across groups
 - Workshop layout is known and fixed
-- Standardized metrics are required
 - Identifying relative performance differences
-- Creating presentation materials for management
 
 **Use Individual Analysis When**:
 - Investigating specific group behavior
 - Station configuration is uncertain
 - Discovering optimal station numbers
 - Groups may have followed different workflows
-- Detailed forensic analysis is needed
 
 ### 5.3 Trade-offs and Considerations
 
@@ -417,26 +411,11 @@ The project's dual-approach architecture serves distinct analytical purposes:
 - Discovers actual group-specific patterns
 - More accurate station boundaries per group
 - Reveals optimal station configurations
-- Better for heterogeneous workflows
 
 **Individual Analysis Limitations**:
 - Harder to compare across groups directly
 - More computational overhead (clustering per group)
 - May detect spurious clusters from noise
-
-### 5.4 Validation of Approach
-
-**Silhouette Score Validation**:
-
-The individual analysis approach selects optimal k based on silhouette scores. Typical results:
-- k=3: Score ~0.45-0.55 (acceptable)
-- k=4: Score ~0.50-0.60 (good)
-- k=5: Score ~0.55-0.65 (good)
-- k=6: Score ~0.60-0.70 (very good)
-- k=7+: Score typically decreases (overfitting)
-
-**Convergence Analysis**:
-K-means clustering consistently converged within 100 iterations across all workshops, indicating stable cluster formation.
 
 ---
 
@@ -445,42 +424,32 @@ K-means clustering consistently converged within 100 iterations across all works
 ### 6.1 Current Limitations
 
 **Data Quality Constraints**:
-- Sensor drift occasionally causes position errors
-- Timestamp resolution may miss rapid movements
-- Z-axis removal eliminates vertical position information
-- No validation against ground truth station locations
+- Sensor drift often causes position errors
+- Timestamp resolution may miss rapid movements (Only important for rapidly moving assets)
+- No validation against ground truth station locations (Could be majorly improved if station locations and boundaries are known)
 
 **Algorithmic Limitations**:
 - K-means assumes spherical clusters (circular station boundaries)
 - Anti-backtracking logic may miss legitimate backward movements
 - 30-second threshold may filter brief but legitimate station visits
-- Silhouette analysis computationally expensive for large k ranges
 
 **Analytical Constraints**:
 - No statistical significance testing between workshops
 - Limited sample size (6 groups per workshop)
 - No temporal pattern analysis (time-of-day effects)
-- Missing contextual information (task descriptions, worker experience)
 
 ### 6.2 Potential Improvements
 
 **Data Collection Enhancements**:
 1. Higher-frequency sampling to capture finer movement details
-2. Sensor fusion (multiple RTLS sensors) for improved accuracy
+2. Better anchor placement for improved accuracy
 3. Integration with task completion timestamps
-4. Collection of environmental factors (temperature, lighting, noise)
 
 **Algorithm Enhancements**:
 1. **DBSCAN Clustering**: Handle non-spherical station shapes
-2. **Gaussian Mixture Models**: Probabilistic station assignment
-3. **Hidden Markov Models**: Model station transition probabilities
-4. **Anomaly Detection**: Identify unusual movement patterns
 
 **Analysis Enhancements**:
-1. **Statistical Testing**: ANOVA or Kruskal-Wallis tests for workshop differences
-2. **Regression Analysis**: Model factors affecting production time
-3. **Time-Series Analysis**: Identify patterns within production cycles
-4. **Network Analysis**: Model workflow as a directed graph
+1. **Network Analysis**: Model workflow as a directed graph
 
 **Visualisation Improvements**:
 1. Interactive dashboards using Plotly or Dash
@@ -500,12 +469,6 @@ K-means clustering consistently converged within 100 iterations across all works
 - **Real-time analysis**: Needs incremental clustering algorithms
 - **Long-term tracking**: Requires database backend (PostgreSQL, InfluxDB)
 
-**Recommended Architecture for Scale**:
-```
-Data Pipeline: RTLS Sensors → Message Queue → Stream Processor → Database
-Analysis Layer: Scheduled Jobs → Incremental Clustering → Dashboard
-```
-
 ### 6.4 Integration Opportunities
 
 **Manufacturing Execution Systems (MES)**:
@@ -521,7 +484,6 @@ Analysis Layer: Scheduled Jobs → Incremental Clustering → Dashboard
 **Business Intelligence (BI) Platforms**:
 - Embed visualisations in executive dashboards
 - Generate automated reports
-- Provide drill-down analysis capabilities
 
 ---
 
@@ -529,7 +491,7 @@ Analysis Layer: Scheduled Jobs → Incremental Clustering → Dashboard
 
 ### 7.1 Key Achievements
 
-The COS4-RTLS project successfully demonstrates a comprehensive framework for analysing RTLS data in manufacturing workshop environments. Key achievements include:
+This project successfully demonstrates a comprehensive framework for analysing RTLS data in manufacturing workshop environments. Key achievements include:
 
 1. **Robust Station Detection**: K-means clustering with silhouette analysis effectively identified station boundaries across diverse workshop configurations
 
@@ -537,17 +499,9 @@ The COS4-RTLS project successfully demonstrates a comprehensive framework for an
 
 3. **Comprehensive Metrics**: The system calculates movement patterns, dwell times, transition times, and production times, providing a holistic view of workshop performance
 
-4. **Actionable Insights**: Analysis revealed specific bottlenecks, efficiency variations, and optimization opportunities across workshops
-
-5. **Scalable Architecture**: Modular design and clear separation of concerns enable future enhancements and scaling
+4. **Scalable Architecture**: Modular design and clear separation of concerns enable future enhancements and scaling
 
 ### 7.2 Technical Contributions
-
-**Methodological Innovations**:
-- Anti-backtracking logic for realistic workflow modeling
-- 75th percentile radius calculation for robust boundary detection
-- Sensor drift filtering through minimum dwell thresholds
-- Consistent visualisation scaling for cross-workshop comparison
 
 **Software Engineering Best Practices**:
 - Modular code organization with clear function separation
@@ -555,35 +509,18 @@ The COS4-RTLS project successfully demonstrates a comprehensive framework for an
 - Consistent file naming conventions
 - Progress reporting for user transparency
 
-### 7.3 Practical Applications
-
-**Workshop Optimization**:
-- Identified specific stations requiring process improvement
-- Revealed spatial layout impact on efficiency
-- Provided benchmark metrics for performance evaluation
-
-**Training and Standardization**:
-- Highlighted variability between groups suggesting training needs
-- Demonstrated impact of consistent workflows (Workshop 2)
-- Enabled identification of best practices for replication
-
-**Resource Planning**:
-- Quantified time requirements at each station
-- Supported capacity planning decisions
-- Enabled data-driven workforce allocation
-
-### 7.4 Future Research Directions
+### 7.3 Future Research Directions
 
 **Enhancements**:
 1. Develop predictive models for production time
 2. Incorporate machine learning for process optimization
-3. 
+3. Get cleaner data to have clearer results
 
-### 7.5 Final Remarks
+### 7.4 Final Remarks
 
-The COS4-RTLS project demonstrates the value of data-driven analysis in modern manufacturing environments. By transforming raw positional tracking data into actionable insights, the system enables evidence-based decision-making for workshop optimization, training improvement, and capacity planning. The dual-approach methodology provides analytical flexibility, while the comprehensive metric suite ensures thorough evaluation of production efficiency.
+This project demonstrates the value of data-driven analysis in modern manufacturing environments. By transforming raw positional tracking data into analytical insights, the system will with some adaptation enable evidence-based decision-making for workshop optimization, training improvement, and capacity planning. The dual-approach methodology provides analytical flexibility.
 
-The modular architecture and clear documentation facilitate future enhancements and integration with broader manufacturing systems. As RTLS technology becomes increasingly prevalent in industrial settings, frameworks like COS4-RTLS will play a crucial role in extracting maximum value from this rich data source.
+The modular architecture and clear documentation facilitate future enhancements and integration with broader manufacturing systems. As RTLS technology becomes increasingly prevalent in industrial settings, frameworks like this project can play a crucial role in extracting maximum value from this rich data source.
 
 ---
 
