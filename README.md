@@ -261,14 +261,6 @@ This is expected! The silhouette analysis may find different optimal k values fo
 - **matplotlib:** Visualization
 - **scikit-learn:** K-means clustering, silhouette analysis
 
-## License
-
-[Add your license here]
-
-## Authors
-
-[Add author information here]
-
 ## Acknowledgments
 
-Developed for COS4 course RTLS analysis project.
+Developed for COS40004 course RTLS analysis project.
