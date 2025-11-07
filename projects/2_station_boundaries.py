@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
 from matplotlib.patches import Circle
 import os
 import json
@@ -16,7 +17,6 @@ from glob import glob
 SPLIT_FOLDER = "/Users/michaelUni/workspace/GitHub/NonExstnt/COS4-RTLS/data/split"
 OUTPUT_FOLDER = "../output/boundaries"
 WORKSHOP_IDS = ["1", "2", "3"]
-N_STATIONS = 6  # Expected number of stations
 
 # Create output folder
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
@@ -35,7 +35,41 @@ def load_split_group_files(workshop_id):
     return pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
 
 
-def detect_stations(df, n_stations=N_STATIONS):
+def determine_optimal_clusters(df):
+    """
+    Determine optimal number of clusters using elbow method and silhouette analysis
+    Returns the optimal k value
+    """
+    coords = df[["x", "y"]].values
+
+    # Elbow method and silhouette analysis
+    k_range = range(3, 10)
+    inertias = []
+    silhouette_scores_list = []
+
+    print("\n  Analyzing optimal number of stations:")
+    for k in k_range:
+        kmeans = KMeans(n_clusters=k, random_state=42, n_init="auto")
+        labels = kmeans.fit_predict(coords)
+        inertias.append(kmeans.inertia_)
+        silhouette_scores_list.append(silhouette_score(coords, labels))
+        print(
+            f"    k={k}: Inertia={kmeans.inertia_:.2f}, Silhouette={silhouette_scores_list[-1]:.3f}"
+        )
+
+    # Find optimal k based on highest silhouette score
+    # (silhouette score ranges from -1 to 1, higher is better)
+    optimal_k = k_range[np.argmax(silhouette_scores_list)]
+    max_silhouette = max(silhouette_scores_list)
+
+    print(
+        f"\n  → Selected k={optimal_k} (highest silhouette score: {max_silhouette:.3f})"
+    )
+
+    return optimal_k
+
+
+def detect_stations(df, n_stations):
     """Use K-means to detect station centers"""
     positions = df[["x", "y"]].values
     kmeans = KMeans(n_clusters=n_stations, random_state=42, n_init="auto")
@@ -152,8 +186,11 @@ for wid in WORKSHOP_IDS:
     df = load_split_group_files(wid)
     print(f"  Loaded {len(df)} records")
 
+    # Determine optimal number of stations from workshop-level data
+    n_stations = determine_optimal_clusters(df)
+
     # Detect stations for combined workshop
-    station_info = detect_stations(df, n_stations=N_STATIONS)
+    station_info = detect_stations(df, n_stations)
     all_station_info[f"workshop{wid}"] = station_info
     print(f"  Detected {len(station_info)} stations:")
     for station in station_info:
@@ -165,7 +202,7 @@ for wid in WORKSHOP_IDS:
     fig = visualize_stations(
         df,
         station_info,
-        f"Workshop {wid} - Detected Stations (K-means, Combined)",
+        f"Workshop {wid} - Detected Stations (K-means, n={n_stations})",
         xlim,
         ylim,
     )
@@ -188,7 +225,7 @@ for wid in WORKSHOP_IDS:
         fig = visualize_stations(
             group_df,
             station_info,
-            f"Workshop {wid} - {group_name.upper()} - Station Boundaries",
+            f"Workshop {wid} - {group_name.upper()} - Station Boundaries (n={n_stations})",
             xlim,
             ylim,
         )

@@ -7,7 +7,7 @@ This folder contains self-contained Python scripts for analyzing Real-Time Locat
 The analysis is divided into 5 tasks, grouped into 4 Python files:
 
 1. **Spaghetti Chart** - Visualize movement paths
-2. **Station Boundaries** - K-means clustering to define work stations
+2. **Station Boundaries** - K-means clustering with optimal k determination (k=3-9 using silhouette analysis)
 3. **Dwell Time Analysis** - Time spent at each station (handles sensor drift)
 4. **Transition & Production Time** - Movement time and total time analysis
 
@@ -100,6 +100,9 @@ output/
 ```
 
 ## Key Features
+
+### Dynamic K-Means Clustering
+The station boundary detection automatically determines the optimal number of stations (k) for each workshop using silhouette analysis (testing k=3-9). This ensures each workshop's unique layout is properly captured rather than forcing a fixed number of stations.
 
 ### Anti-Backtracking Logic
 The analysis assumes workers don't backtrack. If sensors show a return to an earlier station, it's treated as sensor drift and ignored.
