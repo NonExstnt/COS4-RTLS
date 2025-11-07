@@ -2,13 +2,14 @@
 Station Boundary Detection - Individual Groups
 Uses split group files from data/split/
 Generates station boundaries for each individual group
-Number of stations determined from workshop-level k-means clustering
+Number of stations determined from workshop-level k-means clustering using elbow method and silhouette analysis
 """
 
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
 from matplotlib.patches import Circle
 import os
 import json
@@ -30,36 +31,32 @@ def load_group_file(filepath):
     return df
 
 
-def determine_optimal_clusters(df, max_clusters=10):
+def determine_optimal_clusters(df):
     """
-    Determine optimal number of clusters using elbow method
-    Returns the number of clusters where the rate of decrease in inertia slows
+    Determine optimal number of clusters using elbow method and silhouette analysis
+    Returns the optimal k value
     """
-    positions = df[["x", "y"]].values
+    coords = df[["x", "y"]].values
+    
+    # Elbow method and silhouette analysis
+    k_range = range(3, 10)
     inertias = []
+    silhouette_scores_list = []
     
-    # Test different numbers of clusters
-    K_range = range(2, min(max_clusters + 1, len(positions)))
-    
-    for k in K_range:
-        kmeans = KMeans(n_clusters=k, random_state=42, n_init="auto")
-        kmeans.fit(positions)
+    print("\n    Analyzing optimal number of stations:")
+    for k in k_range:
+        kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
+        labels = kmeans.fit_predict(coords)
         inertias.append(kmeans.inertia_)
+        silhouette_scores_list.append(silhouette_score(coords, labels))
+        print(f"      k={k}: Inertia={kmeans.inertia_:.2f}, Silhouette={silhouette_scores_list[-1]:.3f}")
     
-    # Find elbow point using rate of change
-    if len(inertias) < 2:
-        return 6  # Default fallback
+    # Find optimal k based on highest silhouette score
+    # (silhouette score ranges from -1 to 1, higher is better)
+    optimal_k = k_range[np.argmax(silhouette_scores_list)]
+    max_silhouette = max(silhouette_scores_list)
     
-    # Calculate second derivative (rate of change of rate of change)
-    diffs = np.diff(inertias)
-    diff_diffs = np.diff(diffs)
-    
-    # Find the point where the decrease rate changes most (elbow)
-    if len(diff_diffs) > 0:
-        elbow_idx = np.argmax(diff_diffs) + 2  # +2 because we started at k=2 and lost 2 points in diff
-        optimal_k = list(K_range)[elbow_idx] if elbow_idx < len(K_range) else 6
-    else:
-        optimal_k = 6
+    print(f"\n    → Selected k={optimal_k} (highest silhouette score: {max_silhouette:.3f})")
     
     return optimal_k
 
@@ -192,7 +189,6 @@ for wid in WORKSHOP_IDS:
     
     # Determine optimal number of stations from workshop-level data
     n_stations = determine_optimal_clusters(workshop_combined)
-    print(f"\n  Determined optimal number of stations for Workshop {wid}: {n_stations}")
 
     # Now process each group with the determined N_STATIONS
     for group_file in group_files:
