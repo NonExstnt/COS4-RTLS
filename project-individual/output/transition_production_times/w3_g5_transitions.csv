@@ -1,0 +1,4 @@
+group,from_station,to_station,transition_time_seconds,transition_time_minutes
+w3_g5,2.0,1.0,1293.66351,21.5610585
+w3_g5,1.0,4.0,22.001657,0.36669428333333337
+w3_g5,4.0,3.0,18.999235,0.31665391666666665
