@@ -1,5 +1,6 @@
 """
 Predictive Models using Random Forest Regression
+Uses split group files from data/split/
 1. Transition Time Prediction - When will they reach the next station
 2. Production Time Prediction - How long will production take
 """
@@ -9,31 +10,34 @@ import numpy as np
 import matplotlib.pyplot as plt
 import json
 import os
+from glob import glob
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 # Configuration
-DATA_FOLDER = "../data/processed"
-WORKSHOP_FILES = ["Workshop1.csv", "Workshop2.csv", "Workshop3.csv"]
-STATION_FILE = "../output/station_boundaries/station_boundaries.json"
+SPLIT_FOLDER = "/Users/michaelUni/workspace/GitHub/NonExstnt/COS4-RTLS/data/split"
+STATION_FILE = "../output/boundaries/station_boundaries.json"
 OUTPUT_FOLDER = "../output/prediction_models"
+WORKSHOP_IDS = ["1", "2", "3"]
+MIN_STATION_DWELL_SECONDS = 30  # Minimum time in station to count as a real visit
 
 # Create output folder
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
 
-def load_workshop_data(filepath):
-    """Load workshop CSV file"""
-    df = pd.read_csv(filepath)
-    df["time"] = pd.to_datetime(df["time"])
-    return df
-
-
 def load_station_boundaries(filepath):
-    """Load station boundary definitions"""
+    """Load station boundary definitions from JSON"""
     with open(filepath, "r") as f:
         return json.load(f)
+
+
+def load_group_file(filepath):
+    """Load a single group CSV file"""
+    df = pd.read_csv(filepath)
+    df["time"] = pd.to_datetime(df["time"])
+    df = df.sort_values("time").reset_index(drop=True)
+    return df
 
 
 def assign_station(x, y, stations):
@@ -47,113 +51,108 @@ def assign_station(x, y, stations):
     return None
 
 
-def extract_features_for_prediction(df, stations):
-    """Extract features for prediction models"""
+def extract_features_from_group(df, stations, group_name):
+    """Extract features for prediction models from a single group"""
+    # Assign stations
+    df["station"] = df.apply(
+        lambda row: assign_station(row["x"], row["y"], stations), axis=1
+    )
+
+    # Track station visits
+    current_station = None
+    entry_time = None
+    last_timestamp = None
+    station_sequence = []
+
+    for idx, row in df.iterrows():
+        station = row["station"]
+        timestamp = row["time"]
+
+        # Skip None stations (in transit)
+        if station is None or pd.isna(station):
+            continue
+
+        # Detect station change
+        if station != current_station:
+            if current_station is not None:
+                exit_time = last_timestamp
+                dwell = (exit_time - entry_time).total_seconds()
+
+                station_sequence.append(
+                    {
+                        "station": current_station,
+                        "entry_time": entry_time,
+                        "exit_time": exit_time,
+                        "dwell_seconds": dwell,
+                    }
+                )
+
+            current_station = station
+            entry_time = timestamp
+
+        last_timestamp = timestamp
+
+    # Close last station
+    if current_station is not None and entry_time is not None:
+        exit_time = df["time"].iloc[-1]
+        dwell = (exit_time - entry_time).total_seconds()
+        station_sequence.append(
+            {
+                "station": current_station,
+                "entry_time": entry_time,
+                "exit_time": exit_time,
+                "dwell_seconds": dwell,
+            }
+        )
+
+    # Filter out very short station visits (likely sensor drift)
+    filtered_sequence = []
+    for visit in station_sequence:
+        if visit["dwell_seconds"] >= MIN_STATION_DWELL_SECONDS:
+            filtered_sequence.append(visit)
+
+    station_sequence = filtered_sequence
+
+    # Build transition features
     transition_features = []
+    for i in range(len(station_sequence) - 1):
+        from_station = station_sequence[i]
+        to_station = station_sequence[i + 1]
+
+        transition_time = (
+            to_station["entry_time"] - from_station["exit_time"]
+        ).total_seconds()
+
+        # Features: from_station, to_station, dwell_at_from_station
+        transition_features.append(
+            {
+                "from_station": from_station["station"],
+                "to_station": to_station["station"],
+                "dwell_at_from": from_station["dwell_seconds"],
+                "transition_time": transition_time,
+            }
+        )
+
+    # Build production features
     production_features = []
+    if len(station_sequence) >= 2:
+        total_time = (
+            station_sequence[-1]["exit_time"] - station_sequence[0]["entry_time"]
+        ).total_seconds()
+        total_dwell = sum([s["dwell_seconds"] for s in station_sequence])
+        num_stations = len(station_sequence)
 
-    for group_name in sorted(df["name"].unique()):
-        group_data = (
-            df[df["name"] == group_name].sort_values("time").reset_index(drop=True)
+        production_features.append(
+            {
+                "num_stations": num_stations,
+                "avg_dwell_time": total_dwell / num_stations,
+                "first_station": station_sequence[0]["station"],
+                "last_station": station_sequence[-1]["station"],
+                "total_production_time": total_time,
+            }
         )
 
-        # Assign stations
-        group_data["station"] = group_data.apply(
-            lambda row: assign_station(row["x"], row["y"], stations), axis=1
-        )
-
-        # Track station visits
-        current_station = None
-        entry_time = None
-        last_timestamp = None
-        dwell_time = None
-        station_sequence = []
-        max_station_reached = 0
-
-        for idx, row in group_data.iterrows():
-            station = row["station"]
-            timestamp = row["time"]
-
-            # Skip None/NaN stations (in transit)
-            if station is None or pd.isna(station):
-                continue
-
-            # Anti-backtracking
-            if station < max_station_reached:
-                continue
-
-            if station != current_station:
-                if current_station is not None:
-                    exit_time = last_timestamp
-                    dwell = (exit_time - entry_time).total_seconds()
-
-                    station_sequence.append(
-                        {
-                            "station": current_station,
-                            "entry_time": entry_time,
-                            "exit_time": exit_time,
-                            "dwell_seconds": dwell,
-                        }
-                    )
-
-                current_station = station
-                entry_time = timestamp
-                max_station_reached = max(max_station_reached, station)
-
-            # Always update last seen timestamp for current station
-            last_timestamp = timestamp
-
-        # Close last station
-        if current_station is not None and entry_time is not None:
-            exit_time = group_data["time"].iloc[-1]
-            dwell = (exit_time - entry_time).total_seconds()
-            station_sequence.append(
-                {
-                    "station": current_station,
-                    "entry_time": entry_time,
-                    "exit_time": exit_time,
-                    "dwell_seconds": dwell,
-                }
-            )
-
-        # Build transition features
-        for i in range(len(station_sequence) - 1):
-            from_station = station_sequence[i]
-            to_station = station_sequence[i + 1]
-
-            transition_time = (
-                to_station["entry_time"] - from_station["exit_time"]
-            ).total_seconds()
-
-            # Features: from_station, to_station, dwell_at_from_station
-            transition_features.append(
-                {
-                    "from_station": from_station["station"],
-                    "to_station": to_station["station"],
-                    "dwell_at_from": from_station["dwell_seconds"],
-                    "transition_time": transition_time,
-                }
-            )
-
-        # Build production features
-        if len(station_sequence) >= 2:
-            total_time = (
-                station_sequence[-1]["exit_time"] - station_sequence[0]["entry_time"]
-            ).total_seconds()
-            total_dwell = sum([s["dwell_seconds"] for s in station_sequence])
-            num_stations = len(station_sequence)
-
-            production_features.append(
-                {
-                    "num_stations": num_stations,
-                    "avg_dwell_time": total_dwell / num_stations,
-                    "first_station": station_sequence[0]["station"],
-                    "last_station": station_sequence[-1]["station"],
-                    "total_production_time": total_time,
-                }
-            )
-
-    return pd.DataFrame(transition_features), pd.DataFrame(production_features)
+    return transition_features, production_features
 
 
 def train_transition_model(transition_df):
@@ -265,78 +264,89 @@ def plot_prediction_results(results, title, ylabel):
 
 # Main execution
 print("=" * 60)
-print("PREDICTIVE MODELS (RANDOM FOREST REGRESSION)")
+print("PREDICTIVE MODELS (RANDOM FOREST, Split Files)")
 print("=" * 60)
 
 # Load station boundaries
 station_boundaries = load_station_boundaries(STATION_FILE)
-print(f"\nLoaded station boundaries from {STATION_FILE}")
+print(f"\n✓ Loaded station boundaries from {STATION_FILE}")
 
-for workshop_file in WORKSHOP_FILES:
-    workshop_name = workshop_file.replace(".csv", "")
+for wid in WORKSHOP_IDS:
     print(f"\n{'=' * 60}")
-    print(f"Processing {workshop_name}...")
+    print(f"Processing Workshop {wid}...")
     print("=" * 60)
 
-    # Load data
-    filepath = os.path.join(DATA_FOLDER, workshop_file)
-    df = load_workshop_data(filepath)
-
     # Get station info
-    stations = station_boundaries[workshop_name]
+    stations = station_boundaries[f"workshop{wid}"]
 
-    # Extract features
-    transition_df, production_df = extract_features_for_prediction(df, stations)
+    # Load all group files
+    pattern = os.path.join(SPLIT_FOLDER, f"w{wid}_g*.csv")
+    group_files = sorted(glob(pattern))
+    print(f"  Found {len(group_files)} group files")
 
-    print(f"\nExtracted {len(transition_df)} transition records")
-    print(f"Extracted {len(production_df)} production records")
+    # Extract features from all groups
+    all_transitions = []
+    all_production = []
+
+    for group_file in group_files:
+        group_name = os.path.basename(group_file).replace(".csv", "")
+        df = load_group_file(group_file)
+        transitions, production = extract_features_from_group(df, stations, group_name)
+        all_transitions.extend(transitions)
+        all_production.extend(production)
+
+    transition_df = pd.DataFrame(all_transitions)
+    production_df = pd.DataFrame(all_production)
+
+    print(f"\n  Extracted {len(transition_df)} transition records")
+    print(f"  Extracted {len(production_df)} production records")
 
     # Train transition prediction model
-    print("\n--- Transition Time Prediction ---")
+    print("\n  --- Transition Time Prediction ---")
     trans_model, trans_results = train_transition_model(transition_df)
 
     if trans_results:
-        print(f"  MAE: {trans_results['mae']:.2f} seconds")
-        print(f"  RMSE: {trans_results['rmse']:.2f} seconds")
-        print(f"  R² Score: {trans_results['r2']:.3f}")
+        print(f"    MAE: {trans_results['mae']:.2f} seconds")
+        print(f"    RMSE: {trans_results['rmse']:.2f} seconds")
+        print(f"    R² Score: {trans_results['r2']:.3f}")
 
         # Plot
         fig = plot_prediction_results(
             trans_results,
-            f"{workshop_name} - Transition Time Prediction",
+            f"Workshop {wid} - Transition Time Prediction",
             "Time (seconds)",
         )
         plot_path = os.path.join(
-            OUTPUT_FOLDER, f"{workshop_name}_transition_prediction.png"
+            OUTPUT_FOLDER, f"workshop{wid}_transition_prediction.png"
         )
         fig.savefig(plot_path, dpi=150, bbox_inches="tight")
-        print(f"  ✓ Saved plot: {plot_path}")
+        print(f"    ✓ Saved plot: {plot_path}")
         plt.close(fig)
 
     # Train production prediction model
-    print("\n--- Production Time Prediction ---")
+    print("\n  --- Production Time Prediction ---")
     prod_model, prod_results = train_production_model(production_df)
 
     if prod_results:
         print(
-            f"  MAE: {prod_results['mae']:.2f} seconds ({prod_results['mae'] / 60:.2f} minutes)"
+            f"    MAE: {prod_results['mae']:.2f} seconds ({prod_results['mae'] / 60:.2f} minutes)"
         )
         print(
-            f"  RMSE: {prod_results['rmse']:.2f} seconds ({prod_results['rmse'] / 60:.2f} minutes)"
+            f"    RMSE: {prod_results['rmse']:.2f} seconds ({prod_results['rmse'] / 60:.2f} minutes)"
         )
-        print(f"  R² Score: {prod_results['r2']:.3f}")
+        print(f"    R² Score: {prod_results['r2']:.3f}")
 
         # Plot
         fig = plot_prediction_results(
             prod_results,
-            f"{workshop_name} - Production Time Prediction",
+            f"Workshop {wid} - Production Time Prediction",
             "Time (seconds)",
         )
         plot_path = os.path.join(
-            OUTPUT_FOLDER, f"{workshop_name}_production_prediction.png"
+            OUTPUT_FOLDER, f"workshop{wid}_production_prediction.png"
         )
         fig.savefig(plot_path, dpi=150, bbox_inches="tight")
-        print(f"  ✓ Saved plot: {plot_path}")
+        print(f"    ✓ Saved plot: {plot_path}")
         plt.close(fig)
 
 print("\n" + "=" * 60)
