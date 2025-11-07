@@ -13,8 +13,8 @@ from glob import glob
 
 # Configuration
 SPLIT_FOLDER = "/Users/michaelUni/workspace/GitHub/NonExstnt/COS4-RTLS/data/split"
-STATION_FILE = "./output/station_boundaries_individual.json"
-OUTPUT_FOLDER = "./output"
+STATION_FILE = "./output/boundaries/station_boundaries_individual.json"
+OUTPUT_FOLDER = "./output/dwell_times"
 WORKSHOP_IDS = ["1", "2", "3"]
 
 # Create output folder

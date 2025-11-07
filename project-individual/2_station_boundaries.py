@@ -15,7 +15,7 @@ from glob import glob
 
 # Configuration
 SPLIT_FOLDER = "/Users/michaelUni/workspace/GitHub/NonExstnt/COS4-RTLS/data/split"
-OUTPUT_FOLDER = "./output"
+OUTPUT_FOLDER = "./output/boundaries"
 WORKSHOP_IDS = ["1", "2", "3"]
 N_STATIONS = 6  # Expected number of stations
 
