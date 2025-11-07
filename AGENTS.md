@@ -53,10 +53,6 @@ These two are grouped:
 4. Cell Transition Time - How long did it take to move from one station to the next
 5. Total Production Time - How long did it take to go from the start of the "Production" to the end
 
-These two are grouped:
-6. Transition Prediction - Can we predict when will they reach the next station
-7. Production Time Prediction - Can we predict how long the "Production" will take
-
 Problem Context:
 -
 - I have 3 workshop files with data "Workshop1.csv", "Workshop2.csv", "Workshop3.csv"
@@ -65,7 +61,6 @@ Problem Context:
 - Each Workshop file is different Demonstrations on different days so ensure to use the same x and y sizes for the visuals but don't combine the data
 - Under the "name" category is groups such as "Group 1" or "group 4" etc.. these groups go to all the same stations, but starting at different locations
 - The tags should have reported data every second
-- When doing prediction stick to a simple RandomForest Regression
 
 
 The Output I want:
@@ -74,4 +69,3 @@ The Output I want:
 - I want the code to be as simple as possible
 - I want simple visuals to show progress
 - For the comparison between groups of the same workshop, create stacked bar charts for comparison of dwell-time and transition-time
-

@@ -12,8 +12,7 @@ SCRIPTS = [
     '1_spaghetti_chart.py',
     '2_station_boundaries.py',
     '3_dwell_time.py',
-    '4_5_transition_production_time.py',
-    '6_7_prediction_models.py'
+    '4_5_transition_production_time.py'
 ]
 
 def run_script(script_name):
@@ -67,7 +66,6 @@ def main():
         print("  - Station boundaries: ../output/station_boundaries/")
         print("  - Dwell times: ../output/dwell_time/")
         print("  - Transitions & production: ../output/transition_production_time/")
-        print("  - Predictions: ../output/prediction_models/")
     else:
         print("\n⚠ Some analyses failed. Check error messages above.")
     
